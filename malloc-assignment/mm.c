@@ -203,31 +203,37 @@ void *mm_realloc(void *ptr, size_t size)
 	  mm_free(ptr);
 	  return NULL;
 	}
-	printf("STARTING REALLOC...\nptr: %p\nSIZE: %zu\nCURR_SIZE: %zu\n",ptr,  size, GET_SIZE(HDRP(ptr)));
+	//printf("STARTING REALLOC...\nptr: %p\nSIZE: %zu\nCURR_SIZE: %zu\n",ptr,  size, GET_SIZE(HDRP(ptr)));
 	size_t old_size = GET_SIZE(HDRP(ptr));
+	size_t new_size = DSIZE * ((size + OVERHEAD + (DSIZE - 1)) / DSIZE);
 	if (size <= old_size){
-	  size_t new_size = DSIZE * ((size + OVERHEAD + (DSIZE - 1)/DSIZE));
-	  PUT(HDRP(ptr), PACK(new_size, 0)); // change current block size
-	  char *next = NEXT_BLKP(ptr);
-	  PUT(HDRP(next), PACK(old_size - new_size, 0));
-	  mm_free(next); // in case of coalescing
+	  if (old_size - size >= 2 * DSIZE){
+	    PUT(HDRP(ptr), PACK(new_size, 0)); // change current block size
+	    char *next = NEXT_BLKP(ptr);
+	    PUT(HDRP(next), PACK(old_size - new_size, 0));
+	    mm_free(next); // in case of coalescing
+	  }
 	  return ptr;
 	}
-
 	char *next = NEXT_BLKP(ptr);
-	if (!GET_ALLOC(HDRP(next))){
-	  printf("HERE\n");
-	  // if the next block is allocated, we have to just malloc as normal
-	  void *new = mm_malloc(size);
-	  if (new == NULL){
-	    printf("OOGA\n");
-	    return NULL;
+
+	if (GET_ALLOC(HDRP(next))){
+	  size_t total = old_size + GET_SIZE(HDRP(next));
+	  if (total >= new_size){
+	    PUT(HDRP(ptr), PACK(total, 0));
+	    return ptr;
 	  }
-	  memcpy(new, ptr, old_size - OVERHEAD);
-	  mm_free(ptr);
-	  return new;
 	}
-	return NULL;
+
+	// if the next block is allocated, we have to just malloc as normal
+	void *new = mm_malloc(size);
+	if (new == NULL){
+	  return NULL;
+	}
+	memcpy(new, ptr, old_size - OVERHEAD);
+	mm_free(ptr);
+	return new;
+
 }
 
 /* 
