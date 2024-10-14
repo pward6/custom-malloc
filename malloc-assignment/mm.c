@@ -84,7 +84,6 @@ team_t team = {
 
 /* $end mallocmacros */
 
-
 /* Global variables */
 static char *heap_listp;  /* pointer to first block */  
 
@@ -166,9 +165,27 @@ void *mm_malloc(size_t size)
 /* $begin mmfree */
 void mm_free(void *bp)
 {
+	/*
+	This method frees and coalesces allocated memory.
+	*/
 	//printf("call mm_free\n");
-  free(bp);
-	/* You need to implement this function */
+	// if bp is NULL or hasn't been allocated, we can't free it
+	if (!bp || !GET_ALLOC(bp)){
+		return;
+	}
+
+	// free pointer
+	PUT(bp, PACK(GET_SIZE(HDRP(bp)), 0));
+
+	// free and coalesce going forward
+	int *next = NEXT_BLKP(bp);
+	while (next != NULL && next < mem_heap_hi && !GET_ALLOC(HDRP(next))){
+		size_t new_size = GET_SIZE(HDRP(bp)) + GET_SIZE(HDRP(next));
+
+		PUT(bp, PACK(new_size, 0));
+		next = NEXT_BLKP(bp);
+	}
+
 }
 
 /* $end mmfree */
@@ -179,8 +196,7 @@ void mm_free(void *bp)
 void *mm_realloc(void *ptr, size_t size)
 {
 	/* You need to implement this function. */
-  realloc(ptr, size);
-return NULL;
+	return NULL;
 }
 
 /* 
