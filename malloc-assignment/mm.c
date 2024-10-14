@@ -170,19 +170,20 @@ void mm_free(void *bp)
 	*/
 	//printf("call mm_free\n");
 	// if bp is NULL or hasn't been allocated, we can't free it
-	if (!bp || !GET_ALLOC(bp)){
+	if (!bp || !GET_ALLOC(HDRP(bp))){
 		return;
 	}
 
 	// free pointer
-	PUT(bp, PACK(GET_SIZE(HDRP(bp)), 0));
+	size_t block_size = GET_SIZE(HDRP(bp));
+	PUT(HDRP(bp), PACK(block_size, 0));
 
 	// free and coalesce going forward
 	int *next = NEXT_BLKP(bp);
 	while (next != NULL && next < mem_heap_hi && !GET_ALLOC(HDRP(next))){
 		size_t new_size = GET_SIZE(HDRP(bp)) + GET_SIZE(HDRP(next));
-
-		PUT(bp, PACK(new_size, 0));
+		size += new_size
+		PUT(bp, PACK(size, 0));
 		next = NEXT_BLKP(bp);
 	}
 
