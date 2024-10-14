@@ -169,18 +169,21 @@ void mm_free(void *bp)
 	This method frees and coalesces allocated memory.
 	*/
 	// if bp is NULL or hasn't been allocated, we can't free it
-  if (bp == NULL){
+  if (GET_ALLOC(HDRP(bp))){
 	  return;
 	}
+  //printf("STARTING...\n");
 	// free pointer
 	size_t block_size = GET_SIZE(HDRP(bp));
 	PUT(HDRP(bp), PACK(block_size, 0x1));
 	// free and coalesce going forward
 	char *next = NEXT_BLKP(bp);
-	size_t next_alloc = !GET_ALLOC(next);
-	if (next_alloc){
+	size_t next_alloc = GET_ALLOC(HDRP(next));
+	while (next_alloc){
 	  block_size += GET_SIZE(HDRP(next));
 	  PUT(HDRP(bp), PACK(block_size, 0x1));
+	  next = NEXT_BLKP(bp);
+	  next_alloc = GET_ALLOC(HDRP(next));
 	}
 }
 
@@ -192,6 +195,9 @@ void mm_free(void *bp)
 void *mm_realloc(void *ptr, size_t size)
 {
 	/* You need to implement this function. */
+	if (ptr == NULL){
+	  return mm_malloc(size);
+	}
 	return NULL;
 }
 
