@@ -210,7 +210,8 @@ void *mm_realloc(void *ptr, size_t size)
 	    mm_free(next); // in case of coalescing
 	  }
 	  return ptr;
-	}/*
+	}
+
 	char *next = NEXT_BLKP(ptr);
 	
 	if (GET_ALLOC(HDRP(next))){
@@ -220,7 +221,6 @@ void *mm_realloc(void *ptr, size_t size)
 	    return ptr;
 	  }
 	  }
-*/
 	// if the next block is allocated, we have to just malloc as normal
 	void *new = mm_malloc(size);
 	if (new == NULL){
