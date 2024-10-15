@@ -216,7 +216,7 @@ void *mm_realloc(void *ptr, size_t size)
 	  return ptr;
 	}
 	char *next = NEXT_BLKP(ptr);
-
+	
 	if (GET_ALLOC(HDRP(next))){
 	  size_t total = old_size + GET_SIZE(HDRP(next));
 	  if (total >= new_size){
@@ -224,13 +224,40 @@ void *mm_realloc(void *ptr, size_t size)
 	    return ptr;
 	  }
 	}
-
+	//printblock(ptr);
 	// if the next block is allocated, we have to just malloc as normal
 	void *new = mm_malloc(size);
+	//printblock(new);
 	if (new == NULL){
 	  return NULL;
 	}
-	memcpy(new, ptr, old_size - OVERHEAD);
+
+	size_t copy_size = old_size - OVERHEAD;
+	if (size < copy_size){
+	  copy_size = size;
+	}
+	printf("Starting...\n");
+	printblock(ptr);
+	printblock(new);
+	memcpy(new, ptr, copy_size);// maybe we can't use memcpy
+	printf("After copy...\n");
+	printblock(new);
+	size_t i, j;
+	unsigned char* og = (unsigned char *)new;
+	for (i = 0; i < old_size; i++){
+	  printf("%09x ", og[i]);
+	  if (i == 16){
+	    break;
+	  }
+	}
+	unsigned char* byte = (unsigned char *)new;
+	for (j = 0; j < old_size; j++){
+	  printf("%02x ", byte[j]);
+	  if (j == 16){
+	    break;
+	  }
+	}
+	printf("\n");
 	mm_free(ptr);
 	return new;
 
