@@ -168,11 +168,7 @@ void mm_free(void *bp)
 	/*
 	This method frees and coalesces allocated memory.
 	*/
-	// if bp is NULL or hasn't been allocated, we can't free it
-  if (GET_ALLOC(HDRP(bp))){
-	  return;
-	}
-  //printf("STARTING...\n");
+	// if bp is NULL or hasn't been allocated, we can't free it;
 	// free pointer
 	size_t block_size = GET_SIZE(HDRP(bp));
 	PUT(HDRP(bp), PACK(block_size, 0x1));
@@ -203,14 +199,13 @@ void *mm_realloc(void *ptr, size_t size)
 	  mm_free(ptr);
 	  return NULL;
 	}
-	//printf("STARTING REALLOC...\nptr: %p\nSIZE: %zu\nCURR_SIZE: %zu\n",ptr,  size, GET_SIZE(HDRP(ptr)));
 	size_t old_size = GET_SIZE(HDRP(ptr));
 	size_t new_size = DSIZE * ((size + OVERHEAD + (DSIZE - 1)) / DSIZE);
 	if (size <= old_size){
 	  if (old_size - size >= 2 * DSIZE){
 	    PUT(HDRP(ptr), PACK(new_size, 0)); // change current block size
 	    char *next = NEXT_BLKP(ptr);
-	    PUT(HDRP(next), PACK(old_size - new_size, 0));
+	    PUT(HDRP(next), PACK(old_size - new_size, 0x1));
 	    mm_free(next); // in case of coalescing
 	  }
 	  return ptr;
@@ -224,10 +219,9 @@ void *mm_realloc(void *ptr, size_t size)
 	    return ptr;
 	  }
 	}
-	//printblock(ptr);
+
 	// if the next block is allocated, we have to just malloc as normal
 	void *new = mm_malloc(size);
-	//printblock(new);
 	if (new == NULL){
 	  return NULL;
 	}
@@ -236,28 +230,7 @@ void *mm_realloc(void *ptr, size_t size)
 	if (size < copy_size){
 	  copy_size = size;
 	}
-	printf("Starting...\n");
-	printblock(ptr);
-	printblock(new);
 	memcpy(new, ptr, copy_size);// maybe we can't use memcpy
-	printf("After copy...\n");
-	printblock(new);
-	size_t i, j;
-	unsigned char* og = (unsigned char *)new;
-	for (i = 0; i < old_size; i++){
-	  printf("%09x ", og[i]);
-	  if (i == 16){
-	    break;
-	  }
-	}
-	unsigned char* byte = (unsigned char *)new;
-	for (j = 0; j < old_size; j++){
-	  printf("%02x ", byte[j]);
-	  if (j == 16){
-	    break;
-	  }
-	}
-	printf("\n");
 	mm_free(ptr);
 	return new;
 
