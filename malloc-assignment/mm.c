@@ -201,7 +201,8 @@ void *mm_realloc(void *ptr, size_t size)
 	}
 	size_t old_size = GET_SIZE(HDRP(ptr));
 	size_t new_size = DSIZE * ((size + OVERHEAD + (DSIZE - 1)) / DSIZE);
-	if (size <= old_size){
+	
+	if (new_size < old_size){
 	  if (old_size - size >= 2 * DSIZE){
 	    PUT(HDRP(ptr), PACK(new_size, 0)); // change current block size
 	    char *next = NEXT_BLKP(ptr);
@@ -209,7 +210,7 @@ void *mm_realloc(void *ptr, size_t size)
 	    mm_free(next); // in case of coalescing
 	  }
 	  return ptr;
-	}
+	}/*
 	char *next = NEXT_BLKP(ptr);
 	
 	if (GET_ALLOC(HDRP(next))){
@@ -218,8 +219,8 @@ void *mm_realloc(void *ptr, size_t size)
 	    PUT(HDRP(ptr), PACK(total, 0));
 	    return ptr;
 	  }
-	}
-
+	  }
+*/
 	// if the next block is allocated, we have to just malloc as normal
 	void *new = mm_malloc(size);
 	if (new == NULL){
@@ -230,7 +231,7 @@ void *mm_realloc(void *ptr, size_t size)
 	if (size < copy_size){
 	  copy_size = size;
 	}
-	memcpy(new, ptr, copy_size);// maybe we can't use memcpy
+	memmove(new, ptr, copy_size);
 	mm_free(ptr);
 	return new;
 
