@@ -168,17 +168,17 @@ void mm_free(void *bp)
 	/*
 	This method frees and coalesces allocated memory.
 	*/
-	// if bp is NULL or hasn't been allocated, we can't free it;
 	// free pointer
 	size_t block_size = GET_SIZE(HDRP(bp));
-	PUT(HDRP(bp), PACK(block_size, 0x1));
+	PUT(HDRP(bp), PACK(block_size, 0x1)); // set allocated bit with 1 to mark as free
 	// free and coalesce going forward
-	char *next = NEXT_BLKP(bp);
+	char *next = NEXT_BLKP(bp); // next block
 	size_t next_alloc = GET_ALLOC(HDRP(next));
 	while (next_alloc){
+	  // continuously loop over uncoalesced free blocks
 	  block_size += GET_SIZE(HDRP(next));
-	  PUT(HDRP(bp), PACK(block_size, 0x1));
-	  next = NEXT_BLKP(bp);
+	  PUT(HDRP(bp), PACK(block_size, 0x1)); // set original free block with new size
+	  next = NEXT_BLKP(bp); // get next block
 	  next_alloc = GET_ALLOC(HDRP(next));
 	}
 }
@@ -190,7 +190,16 @@ void mm_free(void *bp)
  */
 void *mm_realloc(void *ptr, size_t size)
 {
-  /* if ptr is NULL, call is just malloc */
+  /*
+    This function implements realloc which should allocate a block of memory with a new size
+    If the new size is less than the old size, we can simply shrink the currently allocated block
+    If the new size is greater than the old size, we have two things to try:
+         if the next block is free,
+	 check if the new size can fit into the current block + next free block
+	 else:
+	     call mm_malloc with our new size to allocate a free block and copy data
+   */
+  // if ptr is NULL, there's no allocated block and mm_malloc should be called
 	if (ptr == NULL){
 	  return mm_malloc(size);
 	}
@@ -200,24 +209,34 @@ void *mm_realloc(void *ptr, size_t size)
 	  return NULL;
 	}
 	size_t old_size = GET_SIZE(HDRP(ptr));
-	size_t new_size = DSIZE * ((size + OVERHEAD + (DSIZE - 1)) / DSIZE);
+	// round up new_size to nearest value of DSIZE in order to allocate correctly
+	size_t new_size = DSIZE * ((size + OVERHEAD + (DSIZE - 1)) / DSIZE); 
 	
 	if (new_size < old_size){
+	  // check if the difference between sizes is enough to shrink
 	  if (old_size - size >= 2 * DSIZE){
-	    PUT(HDRP(ptr), PACK(new_size, 0)); // change current block size
+	    PUT(HDRP(ptr), PACK(new_size, 0)); // change current block size and mark as allocated
 	    char *next = NEXT_BLKP(ptr);
-	    PUT(HDRP(next), PACK(old_size - new_size, 0x1));
+	    PUT(HDRP(next), PACK(old_size - new_size, 0x1)); // change size of next block
 	    mm_free(next); // in case of coalescing
 	  }
 	  return ptr;
 	}
 
 	char *next = NEXT_BLKP(ptr);
+	size_t next_size = GET_SIZE(HDRP(next));
 	
+	// if next block is free, check if we can fit the reallocated block
 	if (GET_ALLOC(HDRP(next))){
-	  size_t total = old_size + GET_SIZE(HDRP(next));
+	  size_t total = old_size + next_size;
 	  if (total >= new_size){
-	    PUT(HDRP(ptr), PACK(total, 0));
+	    PUT(HDRP(ptr), PACK(total, 0)); // change size of current block
+	    /* 
+	       Note: the following line caused a segmentation fault so I calculated it manually
+	       void *next_block = NEXT_BLKP(ptr);
+	    */
+	    void *next_block = (char*)ptr + new_size; // get next block
+	    PUT(HDRP(next_block), PACK(total - new_size, 1)); // set new next with smaller size
 	    return ptr;
 	  }
 	  }
@@ -229,10 +248,10 @@ void *mm_realloc(void *ptr, size_t size)
 
 	size_t copy_size = old_size - OVERHEAD;
 	if (size < copy_size){
-	  copy_size = size;
+	  copy_size = size; // figure out how much data we need to copy
 	}
-	memmove(new, ptr, copy_size);
-	mm_free(ptr);
+	memmove(new, ptr, copy_size); // copy data from ptr to new
+	mm_free(ptr); // free memory we're not using anymore
 	return new;
 
 }
